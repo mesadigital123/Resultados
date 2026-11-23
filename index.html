@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Resultados Mesa - Assessores (Consolidado)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-body: #CFDDDC;
+      --surface: #ffffff;
+      --text-main: #022028;
+      --text-sub: #1E4148;
+      --border-color: #6D9394;
+      --primary: #3E6A6D;
+      --primary-dark: #1E4148;
+      --success: #2e7d32;
+      --warning: #C4A35A;
+      --table-hover: #e8f0f0;
+      --badge-bg: #e1ecec;
+      --card-shadow: rgba(2, 32, 40, 0.08);
+    }
+
+    [data-theme="dark"] {
+      --bg-body: #0b171a;
+      --surface: #142529;
+      --text-main: #e2ecec;
+      --text-sub: #92b1b3;
+      --border-color: #2a484d;
+      --primary: #52868a;
+      --primary-dark: #82b0b4;
+      --success: #4caf50;
+      --warning: #d4b46a;
+      --table-hover: #1c3237;
+      --badge-bg: #1e373d;
+      --card-shadow: rgba(0, 0, 0, 0.4);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 24px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border-color);
+      border-left: 6px solid var(--primary);
+      padding: 20px 24px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 4px 12px var(--card-shadow);
+      margin-bottom: 20px;
+    }
+
+    .topbar h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .topbar p {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .theme-toggle, .btn-reset {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-reset {
+      background: var(--primary-dark);
+    }
+
+    .theme-toggle:hover, .btn-reset:hover {
+      opacity: 0.9;
+    }
+
+    .filter-bar {
+      background: var(--surface);
+      padding: 16px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 6px var(--card-shadow);
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .filter-group select, .filter-group input {
+      padding: 8px 12px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--surface);
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .filter-group select:focus, .filter-group input:focus {
+      border-color: var(--primary);
+    }
+
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      border-top: 4px solid var(--primary);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 2px 8px var(--card-shadow);
+    }
+
+    .summary-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .summary-sub {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* FICHA INDIVIDUAL DO ASSESSOR (DADOS PLANILHA) */
+    .assessor-profile-card {
+      background: var(--surface);
+      border: 1px solid var(--border-color);
+      border-left: 6px solid var(--warning);
+      border-radius: 12px;
+      padding: 18px 22px;
+      box-shadow: 0 2px 8px var(--card-shadow);
+      margin-bottom: 24px;
+      display: none;
+    }
+
+    .profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .profile-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-bottom: 12px;
+    }
+
+    .profile-meta span strong {
+      color: var(--text-main);
+    }
+
+    .offices-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .office-pill {
+      background: var(--badge-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .charts-vertical-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card-chart {
+      background: var(--surface);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      width: 100%;
+      height: 320px;
+    }
+
+    .table-container {
+      background: var(--surface);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px var(--card-shadow);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .table-filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      background: var(--table-hover);
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 16px;
+    }
+
+    .historico-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .historico-table th {
+      background: var(--primary);
+      color: white;
+      padding: 11px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+    }
+
+    .historico-table td {
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    .historico-table tr:hover {
+      background: var(--table-hover);
+    }
+
+    .historico-table tfoot td {
+      font-weight: 700;
+      background: var(--table-hover);
+      border-top: 2px solid var(--primary);
+    }
+
+    .num { text-align: right; white-space: nowrap; }
+
+    .sub-text {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-sub);
+      font-weight: 400;
+    }
+
+    .offices-cell {
+      max-width: 280px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text-sub);
+    }
+
+    .tag-status {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 700;
+      background: var(--badge-bg);
+      color: var(--primary-dark);
+      border: 1px solid var(--border-color);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <h1>Painel Consolidado - Resultados Mesa Digital</h1>
+      <p>Análise Integrada: Histórico Positivador (01/2025 a 10/2026) + Base Atualizada de Assessores (Planilha)</p>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn-reset" onclick="resetFilters()">Limpar Filtros</button>
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">Modo Escuro 🌙</button>
+    </div>
+  </div>
+
+  <!-- FILTRO GERAL -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="select-assessor">Assessor / AI (Métricas e Gráficos)</label>
+      <select id="select-assessor" onchange="updateDashboard()" style="min-width: 290px;">
+        <option value="ALL">Todos os Assessores (16 Histórico / 14 Planilha)</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="select-cidade">Onde Fica (Cidade / UF)</label>
+      <select id="select-cidade" onchange="onSecondaryFilterChange()" style="min-width: 200px;">
+        <option value="ALL">Todas as Cidades</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="select-office">Office W1 Atendido</label>
+      <select id="select-office" onchange="onSecondaryFilterChange()" style="min-width: 220px;">
+        <option value="ALL">Todos os Offices</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPIS -->
+  <div class="kpi-container">
+    <div class="summary-card">
+      <div class="summary-label">PL Carteira (Planilha Atual)</div>
+      <div class="summary-value" id="kpi-pl">R$ 0,00</div>
+      <div class="summary-sub" id="kpi-pl-sub">Fechamento 10/2026: R$ 0,00</div>
+    </div>
+    <div class="summary-card" style="border-top-color: var(--success);">
+      <div class="summary-label">Captação Líquida Acumulada</div>
+      <div class="summary-value" style="color: var(--success);" id="kpi-cap">R$ 0,00</div>
+      <div class="summary-sub" id="kpi-cap-sub">Consolidado Planilha</div>
+    </div>
+    <div class="summary-card" style="border-top-color: var(--warning);">
+      <div class="summary-label">Receita Total Acumulada</div>
+      <div class="summary-value" style="color: var(--warning);" id="kpi-rec">R$ 0,00</div>
+      <div class="summary-sub" id="kpi-rec-sub">Consolidado Planilha</div>
+    </div>
+    <div class="summary-card" style="border-top-color: var(--primary-dark);">
+      <div class="summary-label">Clientes Ativos (Planilha Atual)</div>
+      <div class="summary-value" style="color: var(--primary-dark);" id="kpi-contas">0</div>
+      <div class="summary-sub" id="kpi-contas-sub">De 0 clientes totais</div>
+    </div>
+  </div>
+
+  <!-- FICHA DO ASSESSOR SELECIONADO (DADOS DA PLANILHA) -->
+  <div class="assessor-profile-card" id="assessor-profile-card">
+    <div class="profile-header">
+      <div class="profile-title" id="prof-nome">Nome do Assessor</div>
+      <span class="tag-status" id="prof-badge">Presente na Planilha</span>
+    </div>
+    <div class="profile-meta" id="prof-meta"></div>
+    <div class="offices-list" id="prof-offices"></div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="charts-vertical-grid">
+    <div class="card-chart">
+      <div class="card-title" id="chart-pl-title">Evolução do PL de Clientes (R$)</div>
+      <div class="chart-wrapper">
+        <canvas id="chartPL"></canvas>
+      </div>
+    </div>
+    <div class="card-chart">
+      <div class="card-title" id="chart-cap-title">Captação Líquida Mês a Mês (R$)</div>
+      <div class="chart-wrapper">
+        <canvas id="chartCap"></canvas>
+      </div>
+    </div>
+    <div class="card-chart">
+      <div class="card-title" id="chart-rec-title">Receita Total Mês a Mês (R$)</div>
+      <div class="chart-wrapper">
+        <canvas id="chartRec"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABELA DINÂMICA -->
+  <div class="table-container">
+    <div class="card-title">
+      <span>Tabela Dinâmica - Evolução Histórica Mês a Mês</span>
+      <span style="font-size: 13px; font-weight: 500; color: var(--text-sub);" id="table-period-label">Período Selecionado</span>
+    </div>
+
+    <div class="table-filter-bar">
+      <div class="filter-group">
+        <label for="table-start-month">Mês Inicial (Tabela)</label>
+        <select id="table-start-month" onchange="updateDynamicTable()"></select>
+      </div>
+      <div class="filter-group">
+        <label for="table-end-month">Mês Final (Tabela)</label>
+        <select id="table-end-month" onchange="updateDynamicTable()"></select>
+      </div>
+    </div>
+
+    <table class="historico-table">
+      <thead>
+        <tr>
+          <th>Mês / Ano</th>
+          <th class="num">PL dos Clientes (R$)</th>
+          <th class="num">Captação Líquida (R$)</th>
+          <th class="num">Receita Total (R$)</th>
+          <th class="num">Contas Ativas (Mesa)</th>
+          <th class="num">Total de Contas (Mesa)</th>
+        </tr>
+      </thead>
+      <tbody id="monthly-table-body"></tbody>
+    </table>
+  </div>
+
+  <!-- TABELA DE ASSESSORES CONSOLIDADA (PLANILHA + HISTÓRICO) -->
+  <div class="table-container">
+    <div class="card-title">
+      <span>Base Consolidada de Assessores (Planilha Atual + Histórico Fechamento 10/2026)</span>
+      <span style="font-size: 13px; font-weight: 500; color: var(--text-sub);" id="assessores-count">16 assessores</span>
+    </div>
+
+    <div class="table-filter-bar">
+      <div class="filter-group">
+        <label for="search-assessor-table">Buscar na Tabela</label>
+        <input type="text" id="search-assessor-table" placeholder="Nome, cidade ou office..." oninput="updateAssessoresTable()" style="min-width: 240px;">
+      </div>
+      <div class="filter-group">
+        <label for="filter-origem-base">Base Exibida</label>
+        <select id="filter-origem-base" onchange="updateAssessoresTable()">
+          <option value="ALL">Todos (16 Assessores)</option>
+          <option value="SHEET_ONLY">Apenas na Planilha Atual (14)</option>
+        </select>
+      </div>
+    </div>
+
+    <table class="historico-table">
+      <thead>
+        <tr>
+          <th>Assessor / AI</th>
+          <th>Onde Fica</th>
+          <th>Offices que Atende</th>
+          <th>Entrada</th>
+          <th class="num">Meses</th>
+          <th class="num">Clientes (Ativos / Total)</th>
+          <th class="num">PL Fech. 10/2026 (R$)</th>
+          <th class="num">PL Carteira Atual (R$)</th>
+          <th class="num">Captação Total (R$)</th>
+          <th class="num">Receita Total (R$)</th>
+        </tr>
+      </thead>
+      <tbody id="assessores-table-body"></tbody>
+      <tfoot id="assessores-table-foot"></tfoot>
+    </table>
+  </div>
+
+  <script>
+    // SÉRIE HISTÓRICA MENSAL CONSOLIDADA DA MESA (HTML ORIGINAL)
+    const dbMonthly = [
+      {"mes": "2025-01", "pl": 47547257.42, "captacao": 2732998.95, "receita": 21057.18, "contas": 4925, "contas_ativas": 2468},
+      {"mes": "2025-02", "pl": 68251016.86, "captacao": 2553950.77, "receita": 32688.1, "contas": 6533, "contas_ativas": 3396},
+      {"mes": "2025-03", "pl": 57944166.01, "captacao": 2609327.98, "receita": 38237.4, "contas": 6736, "contas_ativas": 3216},
+      {"mes": "2025-04", "pl": 81311913.56, "captacao": 4407692.43, "receita": 58921.32, "contas": 8206, "contas_ativas": 4180},
+      {"mes": "2025-05", "pl": 81080220.16, "captacao": 5931657.58, "receita": 64153.07, "contas": 8282, "contas_ativas": 4038},
+      {"mes": "2025-06", "pl": 93150349.3, "captacao": 3222075.65, "receita": 47709.26, "contas": 9235, "contas_ativas": 4616},
+      {"mes": "2025-07", "pl": 109732476.93, "captacao": 5735501.82, "receita": 65967.01, "contas": 10178, "contas_ativas": 5176},
+      {"mes": "2025-08", "pl": 134964745.18, "captacao": 8356689.31, "receita": 67583.22, "contas": 11342, "contas_ativas": 5849},
+      {"mes": "2025-09", "pl": 155792670.19, "captacao": 9286916.46, "receita": 59311.39, "contas": 12217, "contas_ativas": 6344},
+      {"mes": "2025-10", "pl": 249751161.33, "captacao": 9123286.49, "receita": 60730.68, "contas": 15469, "contas_ativas": 8312},
+      {"mes": "2025-11", "pl": 264328522.53, "captacao": 8480417.35, "receita": 57588.69, "contas": 15995, "contas_ativas": 8498},
+      {"mes": "2025-12", "pl": 298525224.77, "captacao": 11081718.58, "receita": 85510.29, "contas": 17237, "contas_ativas": 9243},
+      {"mes": "2026-01", "pl": 289318377.96, "captacao": 7395336.02, "receita": 87354.62, "contas": 16436, "contas_ativas": 8823},
+      {"mes": "2026-02", "pl": 293637962.79, "captacao": 2347043.54, "receita": 70340.14, "contas": 17380, "contas_ativas": 9071},
+      {"mes": "2026-03", "pl": 319008850.19, "captacao": 7250585.53, "receita": 89498.4, "contas": 18795, "contas_ativas": 9718},
+      {"mes": "2026-04", "pl": 356311938.18, "captacao": 8470795.42, "receita": 100933.38, "contas": 19906, "contas_ativas": 10372},
+      {"mes": "2026-05", "pl": 366051243.92, "captacao": 4476979.3, "receita": 99127.89, "contas": 20315, "contas_ativas": 10490},
+      {"mes": "2026-06", "pl": 403965524.02, "captacao": 6488984.34, "receita": 82044.15, "contas": 21146, "contas_ativas": 10916},
+      {"mes": "2026-07", "pl": 461558725.97, "captacao": 8305653.45, "receita": 119473.05, "contas": 22324, "contas_ativas": 11683},
+      {"mes": "2026-08", "pl": 504857941.94, "captacao": 7590327.46, "receita": 104238.15, "contas": 23463, "contas_ativas": 12360},
+      {"mes": "2026-09", "pl": 561896560.67, "captacao": 9275271.08, "receita": 119723.7, "contas": 25068, "contas_ativas": 13269},
+      {"mes": "2026-10", "pl": 588928936.23, "captacao": 12489211.75, "receita": 132082.17, "contas": 26045, "contas_ativas": 13905}
+    ];
+
+    // BASE UNIFICADA DE ASSESSORES (HISTÓRICO HTML ORIGINAL + DADOS DA PLANILHA "Números assessores")
+    const dbAssessoresAis = [
+      {
+        nome: "Fernando Andrade Conhasca Filho",
+        nome_sheet: "Fernando Conhasca",
+        onde_fica: "São Paulo - SP",
+        offices: ["W1 Campinas", "W1 São José dos Campos"],
+        clientes_totais: 85,
+        clientes_ativos: 68,
+        pl_atual: 2897372.74,
+        captacao_sheet: 520451.78,
+        receita_sheet: 1244.68,
+        na_planilha: true,
+        entrou: "2026-08",
+        meses_mesa: 3,
+        pl_historico: {"2026-08": 1529908.16, "2026-09": 2576497.22, "2026-10": 2887376.93},
+        historico: {"2026-08": {c: 28430.0, r: 130.05}, "2026-09": {c: 179592.58, r: 571.26}, "2026-10": {c: 312429.2, r: 543.37}}
+      },
+      {
+        nome: "Guilherme Ricardo Casagrande dos Santos",
+        nome_sheet: "Guilherme Casagrande",
+        onde_fica: "Porto Alegre - RS",
+        offices: ["W1 Blumenau", "W1 Atlas Barigui", "W1 Curitiba", "W1 Florianópolis", "W1 Itajaí", "W1 Porto Alegre"],
+        clientes_totais: 1132,
+        clientes_ativos: 847,
+        pl_atual: 47210318.26,
+        captacao_sheet: 2424525.76,
+        receita_sheet: 71089.14,
+        na_planilha: true,
+        entrou: "2026-01",
+        meses_mesa: 10,
+        pl_historico: {"2026-01": 20108.26, "2026-02": 15474618.33, "2026-03": 24096831.62, "2026-04": 26221611.83, "2026-05": 26817871.29, "2026-06": 39117702.5, "2026-07": 56546684.5, "2026-08": 52746936.5, "2026-09": 50870030.55, "2026-10": 46355445.91},
+        historico: {"2026-01": {c: 500.0, r: 19.97}, "2026-02": {c: 6076.56, r: 2829.87}, "2026-03": {c: 35077.46, r: 4356.32}, "2026-04": {c: 520691.72, r: 4934.19}, "2026-05": {c: 260795.03, r: 7450.35}, "2026-06": {c: -66452.73, r: 8098.56}, "2026-07": {c: 362707.64, r: 14920.43}, "2026-08": {c: 771079.26, r: 10491.12}, "2026-09": {c: 323282.55, r: 8675.2}, "2026-10": {c: 210768.27, r: 9313.13}}
+      },
+      {
+        nome: "Heitor Andrade Gama",
+        nome_sheet: "Heitor Gama",
+        onde_fica: "Salvador - BA",
+        offices: ["W1 Salvador", "W1 Trancoso"],
+        clientes_totais: 351,
+        clientes_ativos: 164,
+        pl_atual: 4867113.10,
+        captacao_sheet: 128914.29,
+        receita_sheet: 855.82,
+        na_planilha: true,
+        entrou: "2026-09",
+        meses_mesa: 2,
+        pl_historico: {"2026-09": 1001729.29, "2026-10": 4965407.34},
+        historico: {"2026-09": {c: 12100.0, r: 106.38}, "2026-10": {c: 116814.29, r: 749.44}}
+      },
+      {
+        nome: "Hugo Leonardo Martins da Silva",
+        nome_sheet: "Hugo Martins",
+        onde_fica: "Recife - PE",
+        offices: ["W1 Fortaleza", "W1 João Pessoa", "W1 Maceio", "W1 Natal", "W1 Recife"],
+        clientes_totais: 758,
+        clientes_ativos: 505,
+        pl_atual: 22148565.13,
+        captacao_sheet: 1982998.92,
+        receita_sheet: 9395.32,
+        na_planilha: true,
+        entrou: "2026-06",
+        meses_mesa: 4,
+        pl_historico: {"2026-06": 1253400.0, "2026-07": 4646918.0, "2026-08": 8038220.55, "2026-09": 8487162.43, "2026-10": 21754834.98},
+        historico: {"2026-07": {c: 192345.33, r: 824.36}, "2026-08": {c: 104302.18, r: 1484.28}, "2026-09": {c: 480777.3, r: 1912.15}, "2026-10": {c: 1205574.11, r: 5174.53}}
+      },
+      {
+        nome: "Itiro Henrique Camilo Berlato",
+        nome_sheet: "Itiro Berlato",
+        onde_fica: "São Paulo - SP",
+        offices: ["W1 Ana Rosa", "W1 Capital", "W1 Corporate", "W1 Faria Lima", "W1 Ibirapuera", "W1 Ingleses", "W1 Itaim Bibi", "W1 Paulista", "W1 Pinheiros", "W1 Saúde", "W1 SP 1", "W1 Vila Madalena", "W1 Vila Olimpia"],
+        clientes_totais: 3182,
+        clientes_ativos: 1654,
+        pl_atual: 88461933.45,
+        captacao_sheet: 6447011.45,
+        receita_sheet: 114298.18,
+        na_planilha: true,
+        entrou: "2026-03",
+        meses_mesa: 8,
+        pl_historico: {"2026-03": 8846054.34, "2026-04": 43622283.45, "2026-05": 44907604.12, "2026-06": 49656928.1, "2026-07": 50125983.4, "2026-08": 67446209.36, "2026-09": 79789197.35, "2026-10": 85011257.31},
+        historico: {"2026-03": {c: 511324.7, r: 3414.0}, "2026-04": {c: 597567.83, r: 10740.83}, "2026-05": {c: 416012.74, r: 18388.08}, "2026-06": {c: 701897.02, r: 10624.48}, "2026-07": {c: 587978.96, r: 14377.55}, "2026-08": {c: 471048.89, r: 17548.5}, "2026-09": {c: 907127.68, r: 13736.0}, "2026-10": {c: 2254053.63, r: 25468.73}}
+      },
+      {
+        nome: "João Victor Schipmann de Lima",
+        nome_sheet: "Joao Schipmann",
+        onde_fica: "Brasília - DF",
+        offices: ["W1 Brasília"],
+        clientes_totais: 147,
+        clientes_ativos: 88,
+        pl_atual: 3110479.49,
+        captacao_sheet: 553444.52,
+        receita_sheet: 729.39,
+        na_planilha: true,
+        entrou: "2026-08",
+        meses_mesa: 3,
+        pl_historico: {"2026-08": 2030.42, "2026-09": 2127364.68, "2026-10": 2883158.04},
+        historico: {"2026-08": {c: 950.39, r: 0.19}, "2026-09": {c: 126945.01, r: 329.76}, "2026-10": {c: 425549.12, r: 399.44}}
+      },
+      {
+        nome: "Leandro Lorenzetti Medola",
+        nome_sheet: "Leandro Lorenzetti",
+        onde_fica: "Campinas - SP",
+        offices: ["W1 Campinas"],
+        clientes_totais: 2403,
+        clientes_ativos: 1201,
+        pl_atual: 40506778.84,
+        captacao_sheet: 5640474.72,
+        receita_sheet: 68826.10,
+        na_planilha: true,
+        entrou: "2025-08",
+        meses_mesa: 15,
+        pl_historico: {"2025-08": 2038.41, "2025-09": 635697.93, "2025-10": 24736836.01, "2025-11": 25912158.47, "2025-12": 25652001.78, "2026-01": 26267299.25, "2026-02": 24246690.0, "2026-03": 24790830.0, "2026-04": 35912560.0, "2026-05": 36542070.0, "2026-06": 37455050.0, "2026-07": 38513340.0, "2026-08": 39630254.05, "2026-09": 41446073.68, "2026-10": 40920519.54},
+        historico: {"2025-08": {c: 1000.0, r: 301.64}, "2025-09": {c: 127662.05, r: 85.23}, "2025-10": {c: 287370.46, r: 3845.74}, "2025-11": {c: 292041.47, r: 2647.05}, "2025-12": {c: 458227.52, r: 3785.88}, "2026-01": {c: 104717.32, r: 3907.03}, "2026-02": {c: -144608.44, r: 3530.39}, "2026-03": {c: 745077.29, r: 4388.2}, "2026-04": {c: 1048634.69, r: 6372.28}, "2026-05": {c: 96007.09, r: 8120.29}, "2026-06": {c: 456518.44, r: 5102.51}, "2026-07": {c: 968635.59, r: 7336.74}, "2026-08": {c: 720088.22, r: 6438.91}, "2026-09": {c: 424087.26, r: 6025.06}, "2026-10": {c: 55015.76, r: 6939.15}}
+      },
+      {
+        nome: "Leandro Marzochi",
+        nome_sheet: "Leandro Marzochi",
+        onde_fica: "São Paulo - SP",
+        offices: ["W1 B2C", "W1 Business", "W1 Caas", "W1 Cacoal", "W1 Campos do Goytacazes", "W1 CT", "W1 CT2", "W1 Especialistas", "W1 Expansão", "W1 Holdings", "W1 Ji-Paraná", "W1 Jundiaí", "W1 Marketing", "W1 Niterói", "W1 Partnership", "W1 Porto Velho", "W1 Relacionamento", "W1 Rio de Janeiro", "W1 Root", "W1 Vitoria"],
+        clientes_totais: 4082,
+        clientes_ativos: 2140,
+        pl_atual: 94575768.30,
+        captacao_sheet: 29716275.43,
+        receita_sheet: 276528.74,
+        na_planilha: true,
+        entrou: "2025-05",
+        meses_mesa: 18,
+        pl_historico: {"2025-05": 8160470.4, "2025-06": 9498842.65, "2025-07": 10761959.92, "2025-08": 15558569.14, "2025-09": 25591789.79, "2025-10": 39692421.73, "2025-11": 41693505.26, "2025-12": 47967607.07, "2026-01": 46049089.11, "2026-02": 51943901.5, "2026-03": 54132996.87, "2026-04": 74301734.04, "2026-05": 76463602.97, "2026-06": 79268956.04, "2026-07": 82940074.04, "2026-08": 88621649.01, "2026-09": 94515514.59, "2026-10": 94050378.59},
+        historico: {"2025-05": {c: 576464.61, r: 3822.83}, "2025-06": {c: 1462792.77, r: 5014.27}, "2025-07": {c: 1589327.47, r: 6668.74}, "2025-08": {c: 1245464.58, r: 17338.44}, "2025-09": {c: 1709779.58, r: 9324.84}, "2025-10": {c: 3038930.2, r: 12851.06}, "2025-11": {c: 1974903.24, r: 9012.23}, "2025-12": {c: 2258396.07, r: 19990.57}, "2026-01": {c: 2272462.31, r: 24598.45}, "2026-02": {c: 1646333.55, r: 15543.59}, "2026-03": {c: 934002.37, r: 21341.36}, "2026-04": {c: 1553054.78, r: 19780.62}, "2026-05": {c: 871290.96, r: 14288.48}, "2026-06": {c: 1253124.24, r: 13164.2}, "2026-07": {c: 2331207.83, r: 24108.94}, "2026-08": {c: 865171.02, r: 14844.54}, "2026-09": {c: 1764921.34, r: 23590.52}, "2026-10": {c: 1627222.53, r: 21245.06}}
+      },
+      {
+        nome: "Marcos Bispo Alves",
+        nome_sheet: "Marcos Bispo",
+        onde_fica: "Goiânia - GO",
+        offices: ["W1 Campo Grande", "W1 Cuiaba", "W1 Goiânia", "W1 Vila Nova"],
+        clientes_totais: 871,
+        clientes_ativos: 448,
+        pl_atual: 16563128.28,
+        captacao_sheet: 5746471.46,
+        receita_sheet: 46317.11,
+        na_planilha: true,
+        entrou: "2025-07",
+        meses_mesa: 16,
+        pl_historico: {"2025-07": 918654.85, "2025-08": 11593097.2, "2025-09": 16316804.62, "2025-10": 5610867.13, "2025-11": 6127987.12, "2025-12": 6720298.79, "2026-01": 6139046.81, "2026-02": 9760313.0, "2026-03": 9317218.0, "2026-04": 10611220.0, "2026-05": 10432700.0, "2026-06": 10989620.0, "2026-07": 12975580.0, "2026-08": 17657463.57, "2026-09": 16235196.93, "2026-10": 15820135.09},
+        historico: {"2025-07": {c: 74976.87, r: 28.54}, "2025-08": {c: 236334.75, r: 10416.0}, "2025-09": {c: 1015749.47, r: 12808.33}, "2025-10": {c: 316238.31, r: 819.91}, "2025-11": {c: 433251.65, r: 540.78}, "2025-12": {c: 154586.77, r: 673.29}, "2026-01": {c: 425220.72, r: 1141.44}, "2026-02": {c: -19850.25, r: 2250.34}, "2026-03": {c: 768002.78, r: 2621.85}, "2026-04": {c: 877514.5, r: 3069.97}, "2026-05": {c: -211806.31, r: 1416.26}, "2026-06": {c: 411437.46, r: 1727.92}, "2026-07": {c: 362486.51, r: 1940.15}, "2026-08": {c: 325626.27, r: 2568.75}, "2026-09": {c: 311629.31, r: 2582.28}, "2026-10": {c: 265072.65, r: 1711.3}}
+      },
+      {
+        nome: "Marcos Roberto Pertussati",
+        nome_sheet: "Marcos Roberto",
+        onde_fica: "Belo Horizonte - MG",
+        offices: ["W1 Vila da Serra", "W1 Belo Horizonte", "W1 JK", "W1 Juiz de Fora", "W1 Uberlândia"],
+        clientes_totais: 2665,
+        clientes_ativos: 1413,
+        pl_atual: 50063229.07,
+        captacao_sheet: 8071101.44,
+        receita_sheet: 33460.30,
+        na_planilha: true,
+        entrou: "2026-02",
+        meses_mesa: 9,
+        pl_historico: {"2026-02": 1908719.0, "2026-03": 9582458.0, "2026-04": 9467474.0, "2026-05": 11325910.0, "2026-06": 13374390.0, "2026-07": 27238280.0, "2026-08": 29186319.6, "2026-09": 43995572.37, "2026-10": 49466696.86},
+        historico: {"2026-02": {c: 159623.31, r: 423.75}, "2026-03": {c: -17142.08, r: 1613.14}, "2026-04": {c: 327355.41, r: 2817.8}, "2026-05": {c: 896611.87, r: 2311.39}, "2026-06": {c: 1052877.11, r: 1860.5}, "2026-07": {c: 1073580.36, r: 4458.67}, "2026-08": {c: 1252733.02, r: 3769.41}, "2026-09": {c: 1028862.85, r: 6918.54}, "2026-10": {c: 2296599.59, r: 9287.1}}
+      },
+      {
+        nome: "Pedro Henrique Ferreira de Souza",
+        nome_sheet: "Pedro Henrique",
+        onde_fica: "Campinas - SP",
+        offices: ["W1 Campinas"],
+        clientes_totais: 1197,
+        clientes_ativos: 588,
+        pl_atual: 22193877.88,
+        captacao_sheet: 3275632.77,
+        receita_sheet: 21984.95,
+        na_planilha: true,
+        entrou: "2026-03",
+        meses_mesa: 8,
+        pl_historico: {"2026-03": 3468388.0, "2026-04": 13473330.0, "2026-05": 13954910.0, "2026-06": 16551110.0, "2026-07": 16466210.0, "2026-08": 18448401.76, "2026-09": 21069146.95, "2026-10": 22234342.25},
+        historico: {"2026-03": {c: 288508.11, r: 352.86}, "2026-04": {c: 484686.92, r: 3233.81}, "2026-05": {c: 328261.37, r: 2229.21}, "2026-06": {c: 177966.4, r: 2612.24}, "2026-07": {c: 701319.31, r: 3127.77}, "2026-08": {c: 272473.93, r: 2891.38}, "2026-09": {c: 675720.53, r: 4473.6}, "2026-10": {c: 346696.2, r: 3064.08}}
+      },
+      {
+        nome: "Rogério Motta de Sousa",
+        nome_sheet: "Rogerio Motta",
+        onde_fica: "São Paulo - SP",
+        offices: ["W1 Ribeirão Preto", "W1 ABC", "W1 Araraquara", "W1 Barueri", "W1 Bauru", "W1 Ilha Solteira", "W1 Indaiatuba", "W1 Limeira", "W1 Maringá", "W1 Maringá Old", "W1 Piracicaba", "W1 Presidente Prudente", "W1 Santos", "W1 São Carlos", "W1 São José do Rio Preto", "W1 São José dos Campos", "W1 Sorocaba", "W1 Taubaté"],
+        clientes_totais: 2550,
+        clientes_ativos: 1319,
+        pl_atual: 40943418.61,
+        captacao_sheet: 9284869.30,
+        receita_sheet: 68532.43,
+        na_planilha: true,
+        entrou: "2025-10",
+        meses_mesa: 13,
+        pl_historico: {"2025-10": 17163184.44, "2025-11": 18768530.66, "2025-12": 22447803.77, "2026-01": 20143124.63, "2026-02": 21084630.0, "2026-03": 24753340.0, "2026-04": 26849650.0, "2026-05": 26721480.0, "2026-06": 28658140.0, "2026-07": 29480160.0, "2026-08": 32179885.07, "2026-09": 39326432.2, "2026-10": 40912897.12},
+        historico: {"2025-10": {c: 307648.62, r: 2278.42}, "2025-11": {c: 544916.63, r: 1685.87}, "2025-12": {c: 1274477.47, r: 4042.24}, "2026-01": {c: 209871.54, r: 2405.46}, "2026-02": {c: 557467.23, r: 4823.13}, "2026-03": {c: 1270281.64, r: 5100.76}, "2026-04": {c: 397851.71, r: 7800.64}, "2026-05": {c: 651321.1, r: 5607.18}, "2026-06": {c: 776691.41, r: 4551.48}, "2026-07": {c: 1410031.06, r: 8286.89}, "2026-08": {c: 792331.81, r: 7232.38}, "2026-09": {c: 144945.26, r: 7862.36}, "2026-10": {c: 947033.82, r: 6855.62}}
+      },
+      {
+        nome: "Tiago Guilherme Guenze",
+        nome_sheet: "Tiago Guenze",
+        onde_fica: "Não informado",
+        offices: [],
+        clientes_totais: 0,
+        clientes_ativos: 0,
+        pl_atual: 21925211.59,
+        captacao_sheet: 1550915.98,
+        receita_sheet: 10219.51,
+        na_planilha: false,
+        entrou: "2026-08",
+        meses_mesa: 3,
+        pl_historico: {"2026-08": 3590977.51, "2026-09": 9267264.97, "2026-10": 21925211.59},
+        historico: {"2026-08": {c: 341140.44, r: 1298.59}, "2026-09": {c: 280057.34, r: 2517.57}, "2026-10": {c: 929718.2, r: 6403.35}}
+      },
+      {
+        nome: "Vinícios Henrique Barbosa da Silveira",
+        nome_sheet: "Vinicios Barbosa",
+        onde_fica: "Belo Horizonte - MG",
+        offices: ["W1 Vila da Serra", "W1 Nova Lima"],
+        clientes_totais: 2295,
+        clientes_ativos: 1380,
+        pl_atual: 56336464.51,
+        captacao_sheet: 15416445.28,
+        receita_sheet: 97660.10,
+        na_planilha: true,
+        entrou: "2025-08",
+        meses_mesa: 15,
+        pl_historico: {"2025-08": 76467.64, "2025-09": 339548.21, "2025-10": 13694204.27, "2025-11": 14713687.49, "2025-12": 18237906.92, "2026-01": 16246520.97, "2026-02": 22143730.0, "2026-03": 36474710.0, "2026-04": 38337570.0, "2026-05": 40425190.0, "2026-06": 42991990.0, "2026-07": 33714690.0, "2026-08": 37314993.05, "2026-09": 52357553.38, "2026-10": 55124496.21},
+        historico: {"2025-08": {c: 209975.62, r: 11.87}, "2025-09": {c: 144205.43, r: 25.46}, "2025-10": {c: 1026802.18, r: 1833.15}, "2025-11": {c: 967131.55, r: 2864.77}, "2025-12": {c: 1188702.77, r: 3791.81}, "2026-01": {c: 352598.51, r: 3570.62}, "2026-02": {c: 1017642.04, r: 3308.24}, "2026-03": {c: 1512956.18, r: 8849.16}, "2026-04": {c: 1536140.95, r: 10594.27}, "2026-05": {c: 1506027.42, r: 12615.83}, "2026-06": {c: 1469961.39, r: 7770.93}, "2026-07": {c: 946538.77, r: 6252.11}, "2026-08": {c: 1528128.13, r: 7407.03}, "2026-09": {c: 961879.57, r: 15126.0}, "2026-10": {c: 1047754.77, r: 13638.84}}
+      },
+      {
+        nome: "William Estulano Carmona",
+        nome_sheet: "William Carmona",
+        onde_fica: "São Paulo - SP",
+        offices: [],
+        clientes_totais: 2631,
+        clientes_ativos: 1388,
+        pl_atual: 81322845.22,
+        captacao_sheet: 8565137.55,
+        receita_sheet: 295387.50,
+        na_planilha: true,
+        entrou: "2025-06",
+        meses_mesa: 17,
+        pl_historico: {"2025-06": 3619838.69, "2025-07": 4051037.6, "2025-08": 19474729.29, "2025-09": 24652430.38, "2025-10": 33999019.58, "2025-11": 35134587.69, "2025-12": 42992425.6, "2026-01": 39401471.24, "2026-02": 42965300.0, "2026-03": 53109030.0, "2026-04": 61847120.0, "2026-05": 62533930.0, "2026-06": 66452560.0, "2026-07": 85077450.0, "2026-08": 81836401.94, "2026-09": 80068296.37, "2026-10": 81099677.39},
+        historico: {"2025-06": {c: 212809.43, r: 2955.6}, "2025-07": {c: 87099.73, r: 4204.52}, "2025-08": {c: 835484.48, r: 8631.18}, "2025-09": {c: 994256.98, r: 9529.24}, "2025-10": {c: 867642.38, r: 11786.57}, "2025-11": {c: 468275.37, r: 12611.37}, "2025-12": {c: 1823103.66, r: 19899.89}, "2026-01": {c: 1019915.05, r: 20364.32}, "2026-02": {c: -938138.55, r: 16990.39}, "2026-03": {c: 740136.49, r: 19570.27}, "2026-04": {c: 777950.94, r: 28299.34}, "2026-05": {c: -288879.94, r: 23890.63}, "2026-06": {c: 268151.16, r: 23934.15}, "2026-07": {c: -815629.76, r: 29487.25}, "2026-08": {c: 623455.37, r: 20368.64}, "2026-09": {c: 1469942.81, r: 22943.05}, "2026-10": {c: 335803.39, r: 19921.09}}
+      },
+      {
+        nome: "William dos Santos Peddinghaus",
+        nome_sheet: "William Peddinghaus",
+        onde_fica: "Não informado",
+        offices: [],
+        clientes_totais: 0,
+        clientes_ativos: 0,
+        pl_atual: 3517101.08,
+        captacao_sheet: 128396.00,
+        receita_sheet: 1678.82,
+        na_planilha: false,
+        entrou: "2026-09",
+        meses_mesa: 2,
+        pl_historico: {"2026-09": 3232520.5, "2026-10": 3517101.08},
+        historico: {"2026-09": {c: 10510.55, r: 310.88}, "2026-10": {c: 117885.45, r: 1367.94}}
+      }
+    ];
+
+    let chartPLInstance = null;
+    let chartCapInstance = null;
+    let chartRecInstance = null;
+
+    function fmtBRL(v) {
+      return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function toggleTheme() {
+      const body = document.body;
+      const btn = document.getElementById('theme-btn');
+      if (body.getAttribute('data-theme') === 'dark') {
+        body.removeAttribute('data-theme');
+        btn.innerText = 'Modo Escuro 🌙';
+      } else {
+        body.setAttribute('data-theme', 'dark');
+        btn.innerText = 'Modo Claro ☀️';
+      }
+      updateDashboard();
+    }
+
+    function resetFilters() {
+      document.getElementById('select-assessor').value = 'ALL';
+      document.getElementById('select-cidade').value = 'ALL';
+      document.getElementById('select-office').value = 'ALL';
+      document.getElementById('search-assessor-table').value = '';
+      document.getElementById('filter-origem-base').value = 'ALL';
+      const totalLen = dbMonthly.length;
+      document.getElementById('table-start-month').selectedIndex = Math.max(0, totalLen - 3);
+      document.getElementById('table-end-month').selectedIndex = totalLen - 1;
+      updateDashboard();
+    }
+
+    function initSelects() {
+      const tStartMonth = document.getElementById('table-start-month');
+      const tEndMonth = document.getElementById('table-end-month');
+      const selAssessor = document.getElementById('select-assessor');
+      const selCidade = document.getElementById('select-cidade');
+      const selOffice = document.getElementById('select-office');
+      
+      tStartMonth.innerHTML = '';
+      tEndMonth.innerHTML = '';
+
+      dbMonthly.forEach((d) => {
+        const opt1 = document.createElement('option');
+        opt1.value = d.mes;
+        opt1.innerText = d.mes;
+        tStartMonth.appendChild(opt1);
+
+        const opt2 = document.createElement('option');
+        opt2.value = d.mes;
+        opt2.innerText = d.mes;
+        tEndMonth.appendChild(opt2);
+      });
+
+      const totalLen = dbMonthly.length;
+      tStartMonth.selectedIndex = Math.max(0, totalLen - 3);
+      tEndMonth.selectedIndex = totalLen - 1;
+
+      // Popula Assessores
+      dbAssessoresAis.forEach(ass => {
+        const opt = document.createElement('option');
+        opt.value = ass.nome;
+        opt.innerText = ass.na_planilha 
+          ? `${ass.nome} (${ass.onde_fica})`
+          : `${ass.nome} [Histórico]`;
+        selAssessor.appendChild(opt);
+      });
+
+      // Popula Cidades únicas
+      const cidades = [...new Set(dbAssessoresAis.filter(a => a.na_planilha).map(a => a.onde_fica))].sort();
+      cidades.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.innerText = c;
+        selCidade.appendChild(opt);
+      });
+
+      // Popula Offices únicos
+      const offices = [...new Set(dbAssessoresAis.flatMap(a => a.offices))].sort();
+      offices.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o;
+        opt.innerText = o;
+        selOffice.appendChild(opt);
+      });
+    }
+
+    function onSecondaryFilterChange() {
+      document.getElementById('select-assessor').value = 'ALL';
+      updateDashboard();
+    }
+
+    function getMatchingAssessores() {
+      const selectedAssessor = document.getElementById('select-assessor').value;
+      const selectedCidade = document.getElementById('select-cidade').value;
+      const selectedOffice = document.getElementById('select-office').value;
+
+      if (selectedAssessor !== 'ALL') {
+        return dbAssessoresAis.filter(a => a.nome === selectedAssessor);
+      }
+
+      return dbAssessoresAis.filter(a => {
+        const matchCidade = selectedCidade === 'ALL' || a.onde_fica === selectedCidade;
+        const matchOffice = selectedOffice === 'ALL' || a.offices.includes(selectedOffice);
+        return matchCidade && matchOffice;
+      });
+    }
+
+    function getAssessorPL(assessor, targetMes) {
+      if (!assessor || !assessor.pl_historico) return 0;
+      return assessor.pl_historico[targetMes] || 0;
+    }
+
+    function updateDashboard() {
+      const selectedAssessor = document.getElementById('select-assessor').value;
+      const selectedCidade = document.getElementById('select-cidade').value;
+      const selectedOffice = document.getElementById('select-office').value;
+
+      const isGlobalAll = selectedAssessor === 'ALL' && selectedCidade === 'ALL' && selectedOffice === 'ALL';
+      const matching = getMatchingAssessores();
+      const singleAss = selectedAssessor !== 'ALL' ? matching[0] : null;
+
+      // Filtra meses relevantes
+      let minEntrou = "2025-01";
+      if (!isGlobalAll && matching.length > 0) {
+        minEntrou = matching.reduce((min, a) => a.entrou < min ? a.entrou : min, "9999-99");
+      }
+
+      const filteredMonthly = isGlobalAll ? dbMonthly : dbMonthly.filter(d => d.mes >= minEntrou);
+      const labels = filteredMonthly.map(d => d.mes);
+
+      const plData = filteredMonthly.map(d => {
+        if (isGlobalAll) return d.pl;
+        return matching.reduce((sum, a) => sum + getAssessorPL(a, d.mes), 0);
+      });
+
+      const capData = filteredMonthly.map(d => {
+        if (isGlobalAll) return d.captacao;
+        return matching.reduce((sum, a) => sum + (a.historico[d.mes] ? a.historico[d.mes].c : 0), 0);
+      });
+
+      const recData = filteredMonthly.map(d => {
+        if (isGlobalAll) return d.receita;
+        return matching.reduce((sum, a) => sum + (a.historico[d.mes] ? a.historico[d.mes].r : 0), 0);
+      });
+
+      // KPIs consolidados com dados da planilha + histórico
+      const baseParaKpiSheet = isGlobalAll ? matching.filter(a => a.na_planilha) : matching;
+      const totalPLSheet = baseParaKpiSheet.reduce((s, a) => s + (a.pl_atual || 0), 0);
+      const totalPL10_2026 = isGlobalAll
+        ? dbMonthly[dbMonthly.length - 1].pl
+        : matching.reduce((s, a) => s + getAssessorPL(a, "2026-10"), 0);
+
+      const totalCapSheet = baseParaKpiSheet.reduce((s, a) => s + (a.captacao_sheet || 0), 0);
+      const totalRecSheet = baseParaKpiSheet.reduce((s, a) => s + (a.receita_sheet || 0), 0);
+      const totalClientesAtivos = baseParaKpiSheet.reduce((s, a) => s + (a.clientes_ativos || 0), 0);
+      const totalClientesGeral = baseParaKpiSheet.reduce((s, a) => s + (a.clientes_totais || 0), 0);
+
+      document.getElementById('kpi-pl').innerText = fmtBRL(totalPLSheet);
+      document.getElementById('kpi-pl-sub').innerText = `Fechamento 10/2026 (Histórico): ${fmtBRL(totalPL10_2026)}`;
+
+      document.getElementById('kpi-cap').innerText = fmtBRL(totalCapSheet);
+      document.getElementById('kpi-rec').innerText = fmtBRL(totalRecSheet);
+
+      if (singleAss) {
+        document.getElementById('kpi-cap-sub').innerText = `Acumulado desde ${singleAss.entrou} (${singleAss.meses_mesa} meses)`;
+        document.getElementById('kpi-rec-sub').innerText = `Acumulado desde ${singleAss.entrou} (${singleAss.meses_mesa} meses)`;
+      } else if (isGlobalAll) {
+        document.getElementById('kpi-cap-sub').innerText = `Consolidado Planilha (14 assessores)`;
+        document.getElementById('kpi-rec-sub').innerText = `Consolidado Planilha (14 assessores)`;
+      } else {
+        document.getElementById('kpi-cap-sub').innerText = `Soma de ${matching.length} assessor(es) filtrado(s)`;
+        document.getElementById('kpi-rec-sub').innerText = `Soma de ${matching.length} assessor(es) filtrado(s)`;
+      }
+
+      if (totalClientesGeral > 0) {
+        const pctAtivos = ((totalClientesAtivos / totalClientesGeral) * 100).toFixed(1).replace('.', ',');
+        document.getElementById('kpi-contas').innerText = totalClientesAtivos.toLocaleString('pt-BR');
+        document.getElementById('kpi-contas-sub').innerText = `De ${totalClientesGeral.toLocaleString('pt-BR')} clientes totais (${pctAtivos}% ativos)`;
+      } else {
+        const lastRow = filteredMonthly[filteredMonthly.length - 1] || dbMonthly[dbMonthly.length - 1];
+        document.getElementById('kpi-contas').innerText = lastRow.contas_ativas.toLocaleString('pt-BR');
+        document.getElementById('kpi-contas-sub').innerText = `Contas Mesa (${lastRow.mes}) - Sem detalhe individual`;
+      }
+
+      // Ficha Individual do Assessor (quando 1 assessor está selecionado)
+      const profCard = document.getElementById('assessor-profile-card');
+      if (singleAss) {
+        profCard.style.display = 'block';
+        document.getElementById('prof-nome').innerText = `${singleAss.nome} (${singleAss.nome_sheet})`;
+        document.getElementById('prof-badge').innerText = singleAss.na_planilha ? 'Base Planilha Atualizada' : 'Apenas Histórico 10/2026';
+
+        const pctAtiv = singleAss.clientes_totais > 0
+          ? ((singleAss.clientes_ativos / singleAss.clientes_totais) * 100).toFixed(1).replace('.', ',') + '%'
+          : 'N/D';
+
+        document.getElementById('prof-meta').innerHTML = `
+          <span><strong>Onde fica:</strong> ${singleAss.onde_fica}</span>
+          <span><strong>Entrada na Mesa:</strong> ${singleAss.entrou} (${singleAss.meses_mesa} meses)</span>
+          <span><strong>Clientes Ativos / Totais:</strong> ${singleAss.clientes_ativos.toLocaleString('pt-BR')} / ${singleAss.clientes_totais.toLocaleString('pt-BR')} (${pctAtiv})</span>
+          <span><strong>PL 10/2026:</strong> ${fmtBRL(getAssessorPL(singleAss, "2026-10"))}</span>
+        `;
+
+        const officesContainer = document.getElementById('prof-offices');
+        if (singleAss.offices && singleAss.offices.length > 0) {
+          officesContainer.innerHTML = `<strong style="font-size:12.5px; color:var(--text-main); margin-right:4px;">Offices que atende (${singleAss.offices.length}):</strong>` +
+            singleAss.offices.map(o => `<span class="office-pill">${o}</span>`).join('');
+        } else {
+          officesContainer.innerHTML = `<span style="font-size:12.5px; color:var(--text-sub);"><strong>Offices que atende:</strong> Não especificado (-)</span>`;
+        }
+      } else {
+        profCard.style.display = 'none';
+      }
+
+      // Títulos dos gráficos
+      let periodSuffix = "Todos os Meses (Mesa Completa)";
+      if (singleAss) {
+        periodSuffix = `${singleAss.nome_sheet} (${singleAss.entrou} a 10/2026)`;
+      } else if (!isGlobalAll) {
+        periodSuffix = `Filtro Ativo (${matching.length} assessores)`;
+      }
+
+      document.getElementById('chart-pl-title').innerText = `Evolução Histórica do PL de Clientes (R$) - ${periodSuffix}`;
+      document.getElementById('chart-cap-title').innerText = `Captação Líquida Mês a Mês (R$) - ${periodSuffix}`;
+      document.getElementById('chart-rec-title').innerText = `Receita Total Mês a Mês (R$) - ${periodSuffix}`;
+
+      renderCharts(labels, plData, capData, recData);
+
+      if (singleAss) {
+        document.getElementById('table-start-month').value = singleAss.entrou;
+        document.getElementById('table-end-month').value = "2026-10";
+      }
+
+      updateDynamicTable();
+      updateAssessoresTable();
+    }
+
+    function updateDynamicTable() {
+      const selectedAssessor = document.getElementById('select-assessor').value;
+      const selectedCidade = document.getElementById('select-cidade').value;
+      const selectedOffice = document.getElementById('select-office').value;
+      const isGlobalAll = selectedAssessor === 'ALL' && selectedCidade === 'ALL' && selectedOffice === 'ALL';
+
+      const startM = document.getElementById('table-start-month').value;
+      const endM = document.getElementById('table-end-month').value;
+      const matching = getMatchingAssessores();
+
+      let baseMonthly = dbMonthly;
+      if (!isGlobalAll && matching.length > 0) {
+        const minEntrou = matching.reduce((min, a) => a.entrou < min ? a.entrou : min, "9999-99");
+        baseMonthly = dbMonthly.filter(d => d.mes >= minEntrou);
+      }
+
+      const filteredMonthly = baseMonthly.filter(d => d.mes >= startM && d.mes <= endM);
+      document.getElementById('table-period-label').innerText = `${filteredMonthly.length} mês(es) exibido(s): ${startM} a ${endM}`;
+
+      const mTableBody = document.getElementById('monthly-table-body');
+      mTableBody.innerHTML = '';
+
+      filteredMonthly.forEach(row => {
+        const capVal = isGlobalAll
+          ? row.captacao
+          : matching.reduce((sum, a) => sum + (a.historico[row.mes] ? a.historico[row.mes].c : 0), 0);
+        const recVal = isGlobalAll
+          ? row.receita
+          : matching.reduce((sum, a) => sum + (a.historico[row.mes] ? a.historico[row.mes].r : 0), 0);
+        const plVal = isGlobalAll
+          ? row.pl
+          : matching.reduce((sum, a) => sum + getAssessorPL(a, row.mes), 0);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${row.mes}</strong></td>
+          <td class="num">${fmtBRL(plVal)}</td>
+          <td class="num">${fmtBRL(capVal)}</td>
+          <td class="num">${fmtBRL(recVal)}</td>
+          <td class="num">${row.contas_ativas.toLocaleString('pt-BR')}</td>
+          <td class="num">${row.contas.toLocaleString('pt-BR')}</td>
+        `;
+        mTableBody.appendChild(tr);
+      });
+    }
+
+    function updateAssessoresTable() {
+      const aTableBody = document.getElementById('assessores-table-body');
+      const aTableFoot = document.getElementById('assessores-table-foot');
+      const searchText = document.getElementById('search-assessor-table').value.toLowerCase().trim();
+      const origemFilter = document.getElementById('filter-origem-base').value;
+
+      aTableBody.innerHTML = '';
+      let matching = getMatchingAssessores();
+
+      if (origemFilter === 'SHEET_ONLY') {
+        matching = matching.filter(a => a.na_planilha);
+      }
+
+      if (searchText) {
+        matching = matching.filter(a =>
+          a.nome.toLowerCase().includes(searchText) ||
+          a.nome_sheet.toLowerCase().includes(searchText) ||
+          a.onde_fica.toLowerCase().includes(searchText) ||
+          a.offices.some(o => o.toLowerCase().includes(searchText))
+        );
+      }
+
+      let sumAtivos = 0;
+      let sumTotais = 0;
+      let sumPL10 = 0;
+      let sumPLAtual = 0;
+      let sumCap = 0;
+      let sumRec = 0;
+
+      matching.forEach(ass => {
+        const pl10 = getAssessorPL(ass, "2026-10");
+        sumAtivos += ass.clientes_ativos || 0;
+        sumTotais += ass.clientes_totais || 0;
+        sumPL10 += pl10;
+        sumPLAtual += ass.pl_atual || 0;
+        sumCap += ass.captacao_sheet || 0;
+        sumRec += ass.receita_sheet || 0;
+
+        const clientesText = ass.clientes_totais > 0
+          ? `<strong>${ass.clientes_ativos.toLocaleString('pt-BR')}</strong> / ${ass.clientes_totais.toLocaleString('pt-BR')} <span class="sub-text">(${((ass.clientes_ativos / ass.clientes_totais) * 100).toFixed(1).replace('.', ',')}%)</span>`
+          : `<span class="sub-text">Não na planilha</span>`;
+
+        const officesText = ass.offices && ass.offices.length > 0
+          ? ass.offices.join(', ')
+          : '-';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <strong>${ass.nome}</strong>
+            <span class="sub-text">${ass.nome_sheet} ${ass.na_planilha ? '' : '• [Apenas Histórico]'}</span>
+          </td>
+          <td>${ass.onde_fica}</td>
+          <td class="offices-cell">${officesText}</td>
+          <td>${ass.entrou}</td>
+          <td class="num"><strong>${ass.meses_mesa}</strong></td>
+          <td class="num">${clientesText}</td>
+          <td class="num">${fmtBRL(pl10)}</td>
+          <td class="num"><strong>${fmtBRL(ass.pl_atual)}</strong></td>
+          <td class="num" style="color: var(--success); font-weight: 600;">${fmtBRL(ass.captacao_sheet)}</td>
+          <td class="num" style="color: var(--warning); font-weight: 600;">${fmtBRL(ass.receita_sheet)}</td>
+        `;
+        aTableBody.appendChild(tr);
+      });
+
+      const pctTotalAtivos = sumTotais > 0 ? ((sumAtivos / sumTotais) * 100).toFixed(1).replace('.', ',') + '%' : '-';
+      aTableFoot.innerHTML = `
+        <tr>
+          <td colspan="5"><strong>TOTAL EXIBIDO (${matching.length} assessor(es))</strong></td>
+          <td class="num">${sumAtivos.toLocaleString('pt-BR')} / ${sumTotais.toLocaleString('pt-BR')} (${pctTotalAtivos})</td>
+          <td class="num">${fmtBRL(sumPL10)}</td>
+          <td class="num">${fmtBRL(sumPLAtual)}</td>
+          <td class="num">${fmtBRL(sumCap)}</td>
+          <td class="num">${fmtBRL(sumRec)}</td>
+        </tr>
+      `;
+
+      document.getElementById('assessores-count').innerText = `${matching.length} assessor(es) exibido(s)`;
+    }
+
+    function renderCharts(labels, plData, capData, recData) {
+      const textColor = getComputedStyle(document.body).getPropertyValue('--text-main').trim();
+      const gridColor = getComputedStyle(document.body).getPropertyValue('--border-color').trim();
+
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: textColor, autoSkip: false }, grid: { display: false } },
+          y: { ticks: { color: textColor }, grid: { color: gridColor, opacity: 0.15 } }
+        }
+      };
+
+      if (chartPLInstance) chartPLInstance.destroy();
+      chartPLInstance = new Chart(document.getElementById('chartPL').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'PL Clientes (R$)',
+            data: plData,
+            borderColor: '#1E4148',
+            backgroundColor: 'rgba(30, 65, 72, 0.12)',
+            fill: true,
+            borderWidth: 3,
+            tension: 0.2
+          }]
+        },
+        options: commonOptions
+      });
+
+      if (chartCapInstance) chartCapInstance.destroy();
+      chartCapInstance = new Chart(document.getElementById('chartCap').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Captação (R$)',
+            data: capData,
+            backgroundColor: '#3E6A6D',
+            borderRadius: 4
+          }]
+        },
+        options: commonOptions
+      });
+
+      if (chartRecInstance) chartRecInstance.destroy();
+      chartRecInstance = new Chart(document.getElementById('chartRec').getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Receita (R$)',
+            data: recData,
+            backgroundColor: '#C4A35A',
+            borderRadius: 4
+          }]
+        },
+        options: commonOptions
+      });
+    }
+
+    window.onload = () => {
+      initSelects();
+      updateDashboard();
+    };
+  </script>
+</body>
+</html>
