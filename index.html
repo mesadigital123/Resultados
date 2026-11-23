@@ -383,7 +383,7 @@
     <div class="filter-group">
       <label for="select-assessor">Assessor / AI (Métricas e Gráficos)</label>
       <select id="select-assessor" onchange="updateDashboard()" style="min-width: 290px;">
-        <option value="ALL">Todos os Assessores (16 Histórico / 14 Planilha)</option>
+        <option value="ALL">Todos os Assessores (Mesa Completa)</option>
       </select>
     </div>
 
@@ -405,24 +405,24 @@
   <!-- KPIS -->
   <div class="kpi-container">
     <div class="summary-card">
-      <div class="summary-label">PL Carteira (Planilha Atual)</div>
+      <div class="summary-label" id="kpi-pl-label">PL Clientes (Fechamento 10/2026)</div>
       <div class="summary-value" id="kpi-pl">R$ 0,00</div>
-      <div class="summary-sub" id="kpi-pl-sub">Fechamento 10/2026: R$ 0,00</div>
+      <div class="summary-sub" id="kpi-pl-sub">Posição Fechamento Atual</div>
     </div>
     <div class="summary-card" style="border-top-color: var(--success);">
       <div class="summary-label">Captação Líquida Acumulada</div>
       <div class="summary-value" style="color: var(--success);" id="kpi-cap">R$ 0,00</div>
-      <div class="summary-sub" id="kpi-cap-sub">Consolidado Planilha</div>
+      <div class="summary-sub" id="kpi-cap-sub">Soma do Histórico Completo</div>
     </div>
     <div class="summary-card" style="border-top-color: var(--warning);">
       <div class="summary-label">Receita Total Acumulada</div>
       <div class="summary-value" style="color: var(--warning);" id="kpi-rec">R$ 0,00</div>
-      <div class="summary-sub" id="kpi-rec-sub">Consolidado Planilha</div>
+      <div class="summary-sub" id="kpi-rec-sub">Soma do Histórico Completo</div>
     </div>
     <div class="summary-card" style="border-top-color: var(--primary-dark);">
-      <div class="summary-label">Clientes Ativos (Planilha Atual)</div>
+      <div class="summary-label" id="kpi-contas-label">Contas Ativas (Fechamento)</div>
       <div class="summary-value" style="color: var(--primary-dark);" id="kpi-contas">0</div>
-      <div class="summary-sub" id="kpi-contas-sub">De 0 clientes totais</div>
+      <div class="summary-sub" id="kpi-contas-sub">Posição Fechamento Atual</div>
     </div>
   </div>
 
@@ -533,7 +533,7 @@
   </div>
 
   <script>
-    // SÉRIE HISTÓRICA MENSAL CONSOLIDADA DA MESA (HTML ORIGINAL)
+    // SÉRIE HISTÓRICA MENSAL CONSOLIDADA DA MESA (HTML ORIGINAL - INCLUI TODO O HISTÓRICO DA MESA)
     const dbMonthly = [
       {"mes": "2025-01", "pl": 47547257.42, "captacao": 2732998.95, "receita": 21057.18, "contas": 4925, "contas_ativas": 2468},
       {"mes": "2025-02", "pl": 68251016.86, "captacao": 2553950.77, "receita": 32688.1, "contas": 6533, "contas_ativas": 3396},
@@ -878,7 +878,6 @@
       tStartMonth.selectedIndex = Math.max(0, totalLen - 3);
       tEndMonth.selectedIndex = totalLen - 1;
 
-      // Popula Assessores
       dbAssessoresAis.forEach(ass => {
         const opt = document.createElement('option');
         opt.value = ass.nome;
@@ -888,7 +887,6 @@
         selAssessor.appendChild(opt);
       });
 
-      // Popula Cidades únicas
       const cidades = [...new Set(dbAssessoresAis.filter(a => a.na_planilha).map(a => a.onde_fica))].sort();
       cidades.forEach(c => {
         const opt = document.createElement('option');
@@ -897,7 +895,6 @@
         selCidade.appendChild(opt);
       });
 
-      // Popula Offices únicos
       const offices = [...new Set(dbAssessoresAis.flatMap(a => a.offices))].sort();
       offices.forEach(o => {
         const opt = document.createElement('option');
@@ -942,7 +939,6 @@
       const matching = getMatchingAssessores();
       const singleAss = selectedAssessor !== 'ALL' ? matching[0] : null;
 
-      // Filtra meses relevantes
       let minEntrou = "2025-01";
       if (!isGlobalAll && matching.length > 0) {
         minEntrou = matching.reduce((min, a) => a.entrou < min ? a.entrou : min, "9999-99");
@@ -966,43 +962,62 @@
         return matching.reduce((sum, a) => sum + (a.historico[d.mes] ? a.historico[d.mes].r : 0), 0);
       });
 
-      // KPIs consolidados com dados da planilha + histórico
-      const baseParaKpiSheet = isGlobalAll ? matching.filter(a => a.na_planilha) : matching;
-      const totalPLSheet = baseParaKpiSheet.reduce((s, a) => s + (a.pl_atual || 0), 0);
-      const totalPL10_2026 = isGlobalAll
-        ? dbMonthly[dbMonthly.length - 1].pl
-        : matching.reduce((s, a) => s + getAssessorPL(a, "2026-10"), 0);
+      const lastRow = filteredMonthly[filteredMonthly.length - 1] || dbMonthly[dbMonthly.length - 1];
 
-      const totalCapSheet = baseParaKpiSheet.reduce((s, a) => s + (a.captacao_sheet || 0), 0);
-      const totalRecSheet = baseParaKpiSheet.reduce((s, a) => s + (a.receita_sheet || 0), 0);
-      const totalClientesAtivos = baseParaKpiSheet.reduce((s, a) => s + (a.clientes_ativos || 0), 0);
-      const totalClientesGeral = baseParaKpiSheet.reduce((s, a) => s + (a.clientes_totais || 0), 0);
+      // BIG NUMBERS (KPIs):
+      // Quando "Todos" está selecionado, exibe o consolidado completo da Mesa (dbMonthly) — incluindo assessores históricos e atuais.
+      // Quando um filtro está ativo, exibe os valores consolidados do(s) assessor(es) selecionado(s).
+      if (isGlobalAll) {
+        const totalCapMesa = dbMonthly.reduce((acc, d) => acc + d.captacao, 0);
+        const totalRecMesa = dbMonthly.reduce((acc, d) => acc + d.receita, 0);
+        const totalPLSheet14 = dbAssessoresAis.filter(a => a.na_planilha).reduce((s, a) => s + (a.pl_atual || 0), 0);
 
-      document.getElementById('kpi-pl').innerText = fmtBRL(totalPLSheet);
-      document.getElementById('kpi-pl-sub').innerText = `Fechamento 10/2026 (Histórico): ${fmtBRL(totalPL10_2026)}`;
+        document.getElementById('kpi-pl-label').innerText = 'PL Clientes (Fechamento 10/2026)';
+        document.getElementById('kpi-pl').innerText = fmtBRL(lastRow.pl);
+        document.getElementById('kpi-pl-sub').innerText = `Planilha Atual (14 assessores): ${fmtBRL(totalPLSheet14)}`;
 
-      document.getElementById('kpi-cap').innerText = fmtBRL(totalCapSheet);
-      document.getElementById('kpi-rec').innerText = fmtBRL(totalRecSheet);
+        document.getElementById('kpi-cap').innerText = fmtBRL(totalCapMesa);
+        document.getElementById('kpi-cap-sub').innerText = 'Soma do Histórico Completo da Mesa (01/2025 a 10/2026)';
 
-      if (singleAss) {
-        document.getElementById('kpi-cap-sub').innerText = `Acumulado desde ${singleAss.entrou} (${singleAss.meses_mesa} meses)`;
-        document.getElementById('kpi-rec-sub').innerText = `Acumulado desde ${singleAss.entrou} (${singleAss.meses_mesa} meses)`;
-      } else if (isGlobalAll) {
-        document.getElementById('kpi-cap-sub').innerText = `Consolidado Planilha (14 assessores)`;
-        document.getElementById('kpi-rec-sub').innerText = `Consolidado Planilha (14 assessores)`;
-      } else {
-        document.getElementById('kpi-cap-sub').innerText = `Soma de ${matching.length} assessor(es) filtrado(s)`;
-        document.getElementById('kpi-rec-sub').innerText = `Soma de ${matching.length} assessor(es) filtrado(s)`;
-      }
+        document.getElementById('kpi-rec').innerText = fmtBRL(totalRecMesa);
+        document.getElementById('kpi-rec-sub').innerText = 'Soma do Histórico Completo da Mesa (01/2025 a 10/2026)';
 
-      if (totalClientesGeral > 0) {
-        const pctAtivos = ((totalClientesAtivos / totalClientesGeral) * 100).toFixed(1).replace('.', ',');
-        document.getElementById('kpi-contas').innerText = totalClientesAtivos.toLocaleString('pt-BR');
-        document.getElementById('kpi-contas-sub').innerText = `De ${totalClientesGeral.toLocaleString('pt-BR')} clientes totais (${pctAtivos}% ativos)`;
-      } else {
-        const lastRow = filteredMonthly[filteredMonthly.length - 1] || dbMonthly[dbMonthly.length - 1];
+        document.getElementById('kpi-contas-label').innerText = 'Contas Ativas (Fechamento)';
         document.getElementById('kpi-contas').innerText = lastRow.contas_ativas.toLocaleString('pt-BR');
-        document.getElementById('kpi-contas-sub').innerText = `Contas Mesa (${lastRow.mes}) - Sem detalhe individual`;
+        document.getElementById('kpi-contas-sub').innerText = `De ${lastRow.contas.toLocaleString('pt-BR')} contas (${lastRow.mes})`;
+      } else {
+        const totalPLSheet = matching.reduce((s, a) => s + (a.pl_atual || 0), 0);
+        const totalPL10_2026 = matching.reduce((s, a) => s + getAssessorPL(a, "2026-10"), 0);
+        const totalCapFiltered = matching.reduce((s, a) => s + (a.captacao_sheet || 0), 0);
+        const totalRecFiltered = matching.reduce((s, a) => s + (a.receita_sheet || 0), 0);
+        const totalClientesAtivos = matching.reduce((s, a) => s + (a.clientes_ativos || 0), 0);
+        const totalClientesGeral = matching.reduce((s, a) => s + (a.clientes_totais || 0), 0);
+
+        document.getElementById('kpi-pl-label').innerText = 'PL Carteira (Planilha Atual)';
+        document.getElementById('kpi-pl').innerText = fmtBRL(totalPLSheet);
+        document.getElementById('kpi-pl-sub').innerText = `Fechamento 10/2026 (Histórico): ${fmtBRL(totalPL10_2026)}`;
+
+        document.getElementById('kpi-cap').innerText = fmtBRL(totalCapFiltered);
+        document.getElementById('kpi-rec').innerText = fmtBRL(totalRecFiltered);
+
+        if (singleAss) {
+          document.getElementById('kpi-cap-sub').innerText = `Acumulado desde ${singleAss.entrou} (${singleAss.meses_mesa} meses)`;
+          document.getElementById('kpi-rec-sub').innerText = `Acumulado desde ${singleAss.entrou} (${singleAss.meses_mesa} meses)`;
+        } else {
+          document.getElementById('kpi-cap-sub').innerText = `Soma de ${matching.length} assessor(es) filtrado(s)`;
+          document.getElementById('kpi-rec-sub').innerText = `Soma de ${matching.length} assessor(es) filtrado(s)`;
+        }
+
+        if (totalClientesGeral > 0) {
+          const pctAtivos = ((totalClientesAtivos / totalClientesGeral) * 100).toFixed(1).replace('.', ',');
+          document.getElementById('kpi-contas-label').innerText = 'Clientes Ativos (Planilha Atual)';
+          document.getElementById('kpi-contas').innerText = totalClientesAtivos.toLocaleString('pt-BR');
+          document.getElementById('kpi-contas-sub').innerText = `De ${totalClientesGeral.toLocaleString('pt-BR')} clientes totais (${pctAtivos}% ativos)`;
+        } else {
+          document.getElementById('kpi-contas-label').innerText = 'Contas Ativas (Fechamento Mesa)';
+          document.getElementById('kpi-contas').innerText = lastRow.contas_ativas.toLocaleString('pt-BR');
+          document.getElementById('kpi-contas-sub').innerText = `De ${lastRow.contas.toLocaleString('pt-BR')} contas (${lastRow.mes})`;
+        }
       }
 
       // Ficha Individual do Assessor (quando 1 assessor está selecionado)
